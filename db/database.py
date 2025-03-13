@@ -18,18 +18,13 @@ async def create_db():
 
 async def register_user(user_id, username):
     async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute(
-            "SELECT username FROM users WHERE id_tg = ?", (user_id,)
-        ) as cursor:
-            row = await cursor.fetchone()
-            if not row:
-                await db.execute(
-                    """
-                    INSERT INTO users (id_tg, username) 
-                    VALUES (?, ?)
-                    """,
-                    (user_id, username),
-                )
+        await db.execute(
+            """
+            INSERT INTO users (id_tg, username) 
+            VALUES (?, ?)
+            """,
+            (user_id, username),
+        )
         await db.commit()
 
 
