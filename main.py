@@ -185,8 +185,7 @@ async def send_follow_up(chat_id, bot):
 def main():
     print("MAIN")
 
-    # TOKEN = os.getenv("TOKEN")
-    TOKEN = "8025550158:AAEVGc6fHWZb6e1Xlh3DNXpYgfhoxi3jP48"
+    TOKEN = os.getenv("TOKEN")
 
     application = Application.builder().token(TOKEN).build()
 
