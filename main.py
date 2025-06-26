@@ -6,17 +6,20 @@ from telegram.ext import (
     Application,
     CommandHandler,
     ContextTypes,
-    MessageHandler,
-    filters,
-    ConversationHandler,
     CallbackQueryHandler,
 )
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 
 
-from db.database import create_db, register_user, get_all_users
+from db.database import create_db, register_user
 
-from static.text import GREETING, ABOUT_INTENSIV, DESCRIPTION_1, DESCRIPTION_2
+from static.text import (
+    GREETING,
+    ABOUT_INTENSIV,
+    DESCRIPTION_1,
+    DESCRIPTION_2,
+    DELAYED_MESSAGE,
+)
 
 import asyncio
 
@@ -126,6 +129,7 @@ async def course_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             "⚡️ Подробнее", url="http://by.lkey.tilda.ws/base"
                         )
                     ],
+                    [InlineKeyboardButton("⬅️ Назад", callback_data="about_course")],
                 ]
             )
 
@@ -138,7 +142,7 @@ async def course_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
     elif query.data == "advanced_course":
-        with open("img/course_3.jpg", "rb") as photo:
+        with open("img/course_3.jpeg", "rb") as photo:
             keyboard = InlineKeyboardMarkup(
                 [
                     [
@@ -151,6 +155,7 @@ async def course_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             "⚡️ Подробнее", url="http://by.lkey.tilda.ws/super"
                         )
                     ],
+                    [InlineKeyboardButton("⬅️ Назад", callback_data="about_course")],
                 ]
             )
 
@@ -166,11 +171,15 @@ async def course_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def send_follow_up(chat_id, bot):
-    await asyncio.sleep(900)
-    await bot.send_message(
-        chat_id=chat_id,
-        text="❓ Ещё не готов купить?\n\nПосмотри более подробную информацию на нашем сайте:\nhttp://by.lkey.tilda.ws/",
-    )
+    await asyncio.sleep(30)
+
+    with open("img/course_4.jpg", "rb") as photo:
+        await bot.send_photo(
+            chat_id=chat_id,
+            photo=photo,
+            caption="❓ Ещё не готов купить?\n\n🤩 Посмотри более подробную информацию на нашем сайте:\n\nhttp://by.lkey.tilda.ws/",
+            parse_mode="Markdown",
+        )
 
 
 def main():
