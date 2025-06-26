@@ -171,7 +171,7 @@ async def course_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def send_follow_up(chat_id, bot):
-    await asyncio.sleep(30)
+    await asyncio.sleep(900)
 
     with open("img/course_4.jpg", "rb") as photo:
         await bot.send_photo(
