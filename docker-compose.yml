@@ -3,5 +3,7 @@ services:
     build:
       context: .
     restart: unless-stopped
+    volumes:
+      - ../data/users.db:/app/users.db
     env_file:
       - .env
