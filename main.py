@@ -18,8 +18,10 @@ from static.text import (
     ABOUT_INTENSIV,
     DESCRIPTION_1,
     DESCRIPTION_2,
-    DELAYED_MESSAGE,
+    PLEASE_SUBSCRIBE,
 )
+
+from static.ids import CHANNEL_USERNAME
 
 import asyncio
 
@@ -28,6 +30,18 @@ DB_PATH = "users.db"
 GROUP_ID = "-1002394139708"
 
 load_dotenv()
+
+
+async def is_subscribed(user_id, context) -> bool:
+    try:
+        member = await context.bot.get_chat_member(CHANNEL_USERNAME, user_id)
+
+        print(f"User status: {member.status}")
+
+        return member.status in ["member", "administrator", "creator"]
+    except Exception as e:
+        print(f"error - {e}")
+        return False
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -60,51 +74,71 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def about_course_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    user_id = update.effective_user.id
 
     await query.answer()
 
-    keyboard = InlineKeyboardMarkup(
-        [
-            [InlineKeyboardButton("🔹 Базовый курс", callback_data="basic_course")],
-            [
-                InlineKeyboardButton(
-                    "🔸 Продвинутый курс", callback_data="advanced_course"
-                )
-            ],
-        ]
-    )
+    subc = await is_subscribed(user_id, context)
 
-    with open("img/course_1.jpg", "rb") as photo:
-        await context.bot.send_photo(
+    print(subc)
+    if subc:
+        keyboard = InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🔹 Базовый курс", callback_data="basic_course")],
+                [
+                    InlineKeyboardButton(
+                        "🔸 Продвинутый курс", callback_data="advanced_course"
+                    )
+                ],
+            ]
+        )
+
+        with open("img/course_1.jpg", "rb") as photo:
+            await context.bot.send_photo(
+                chat_id=update.effective_chat.id,
+                photo=photo,
+                caption=ABOUT_INTENSIV,
+                parse_mode="Markdown",
+                reply_markup=keyboard,
+            )
+    else:
+        await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            photo=photo,
-            caption=ABOUT_INTENSIV,
+            text=PLEASE_SUBSCRIBE,
             parse_mode="Markdown",
-            reply_markup=keyboard,
         )
 
 
 async def intensiv_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
-    keyboard = InlineKeyboardMarkup(
-        [
-            [InlineKeyboardButton("🔹 Базовый курс", callback_data="basic_course")],
+    subc = await is_subscribed(user_id, context)
+    print(subc)
+    if subc:
+        keyboard = InlineKeyboardMarkup(
             [
-                InlineKeyboardButton(
-                    "🔸 Продвинутый курс", callback_data="advanced_course"
-                )
-            ],
-        ]
-    )
+                [InlineKeyboardButton("🔹 Базовый курс", callback_data="basic_course")],
+                [
+                    InlineKeyboardButton(
+                        "🔸 Продвинутый курс", callback_data="advanced_course"
+                    )
+                ],
+            ]
+        )
 
-    with open("img/course_1.jpg", "rb") as photo:
-        await context.bot.send_photo(
+        with open("img/course_1.jpg", "rb") as photo:
+            await context.bot.send_photo(
+                chat_id=user_id,
+                photo=photo,
+                caption=ABOUT_INTENSIV,
+                parse_mode="Markdown",
+                reply_markup=keyboard,
+            )
+    else:
+        await context.bot.send_message(
             chat_id=user_id,
-            photo=photo,
-            caption=ABOUT_INTENSIV,
+            text=PLEASE_SUBSCRIBE,
             parse_mode="Markdown",
-            reply_markup=keyboard,
         )
 
 
@@ -185,7 +219,10 @@ async def send_follow_up(chat_id, bot):
 def main():
     print("MAIN")
 
-    TOKEN = os.getenv("TOKEN")
+    # TOKEN = os.getenv("TOKEN")
+
+    # for test
+    TOKEN = "7942617995:AAGc7e6F2WsDL0EpsD8E5DroDK0q9hKwY-Q"
 
     application = Application.builder().token(TOKEN).build()
 
