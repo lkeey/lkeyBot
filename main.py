@@ -172,7 +172,11 @@ async def intensiv_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         keyboard = InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton("Канал", url="https://t.me/+zO1-XmalT2xhNzMy")],
+                [
+                    InlineKeyboardButton(
+                        "Подписаться", url="https://t.me/+zO1-XmalT2xhNzMy"
+                    )
+                ],
             ]
         )
 
@@ -183,13 +187,17 @@ async def intensiv_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown",
         )
 
+        context.job_queue.run_once(
+            send_is_subscribed,
+            10,
+            chat_id=update.effective_chat.id,
+            name="CHECK_IF_SUBSCRIBED",
+        )
+
 
 async def course_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-
-    chat_id = update.effective_chat.id
-    bot = context.bot
 
     await update_status(
         update.effective_user.id,
@@ -248,15 +256,21 @@ async def course_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=keyboard,
             )
 
-    asyncio.create_task(send_follow_up(chat_id, bot))
+    # отправляем прогревочное сообщение
+    context.job_queue.run_once(
+        send_follow_up,
+        900,  # 15 мин
+        chat_id=update.effective_chat.id,
+        name="SEND_PROGREV_MESSAGE",
+    )
 
 
-async def send_follow_up(chat_id, bot):
-    await asyncio.sleep(900)
+async def send_follow_up(context: ContextTypes.DEFAULT_TYPE) -> None:
+    job = context.job
 
     with open("img/course_4.jpg", "rb") as photo:
-        await bot.send_photo(
-            chat_id=chat_id,
+        await context.bot.send_photo(
+            chat_id=job.chat_id,
             photo=photo,
             caption="❓ Ещё не готов купить?\n\n🤩 Посмотри более подробную информацию на нашем сайте:\n\nhttp://by.lkey.tilda.ws/",
             parse_mode="Markdown",
