@@ -430,10 +430,10 @@ async def send_retry_if_subscribed(update: Update, context: ContextTypes.DEFAULT
 def main():
     print("MAIN")
 
-    # TOKEN = os.getenv("TOKEN")
+    TOKEN = os.getenv("TOKEN")
 
     # for test
-    TOKEN = "7942617995:AAGc7e6F2WsDL0EpsD8E5DroDK0q9hKwY-Q"
+    # TOKEN = "7942617995:AAGc7e6F2WsDL0EpsD8E5DroDK0q9hKwY-Q"
 
     application = Application.builder().token(TOKEN).build()
 
