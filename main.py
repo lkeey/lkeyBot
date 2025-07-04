@@ -11,7 +11,13 @@ from telegram.ext import (
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 
 
-from db.database import create_db, register_user
+from db.database import (
+    create_db,
+    register_user,
+    calculate_conversion,
+    update_status,
+    export_to_excel,
+)
 
 from static.text import (
     GREETING,
@@ -21,15 +27,18 @@ from static.text import (
     PLEASE_SUBSCRIBE,
 )
 
-from static.ids import CHANNEL_USERNAME
+from static.states_list import states_list
+
+from static.ids import CHANNEL_USERNAME, ADMINS
 
 import asyncio
 
 DB_PATH = "users.db"
-
-GROUP_ID = "-1002394139708"
+EXCEL_PATH = "users_export.xlsx"
 
 load_dotenv()
+
+# TODO добавить админ панель и конверсию лидов
 
 
 async def is_subscribed(user_id, context) -> bool:
@@ -80,8 +89,12 @@ async def about_course_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     subc = await is_subscribed(user_id, context)
 
-    print(subc)
     if subc:
+        await update_status(
+            update.effective_user.id,
+            2,  # подписался
+        )
+
         keyboard = InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton("🔹 Базовый курс", callback_data="basic_course")],
@@ -102,9 +115,16 @@ async def about_course_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 reply_markup=keyboard,
             )
     else:
+        keyboard = InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("Канал", url="https://t.me/+zO1-XmalT2xhNzMy")],
+            ]
+        )
+
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=PLEASE_SUBSCRIBE,
+            reply_markup=keyboard,
             parse_mode="Markdown",
         )
 
@@ -113,8 +133,13 @@ async def intensiv_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
     subc = await is_subscribed(user_id, context)
-    print(subc)
+
     if subc:
+        await update_status(
+            update.effective_user.id,
+            2,  # подписался
+        )
+
         keyboard = InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton("🔹 Базовый курс", callback_data="basic_course")],
@@ -135,9 +160,16 @@ async def intensiv_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=keyboard,
             )
     else:
+        keyboard = InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("Канал", url="https://t.me/+zO1-XmalT2xhNzMy")],
+            ]
+        )
+
         await context.bot.send_message(
-            chat_id=user_id,
+            chat_id=update.effective_chat.id,
             text=PLEASE_SUBSCRIBE,
+            reply_markup=keyboard,
             parse_mode="Markdown",
         )
 
@@ -148,6 +180,11 @@ async def course_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     chat_id = update.effective_chat.id
     bot = context.bot
+
+    await update_status(
+        update.effective_user.id,
+        3,  # открыл описание
+    )
 
     if query.data == "basic_course":
         with open("img/course_2.jpg", "rb") as photo:
@@ -216,6 +253,91 @@ async def send_follow_up(chat_id, bot):
         )
 
 
+async def admin_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    if user_id in ADMINS:
+        keyboard = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("🌐 Конверсии", callback_data="get_conversions")]]
+        )
+
+        await context.bot.send_message(
+            chat_id=user_id,
+            text="Выберите команду",
+            reply_markup=keyboard,
+            parse_mode="Markdown",
+        )
+    else:
+        await context.bot.send_message(
+            chat_id=user_id,
+            text="Вы не админ :(",
+        )
+
+
+async def get_conversions_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    chat_id = update.effective_chat.id
+
+    number_users = await calculate_conversion()
+    message = f"{states_list[1]}"
+    for n, number in enumerate(number_users[1:]):
+        if number_users[n] > 0:
+            conversion = round(number_users[n + 1] / number_users[n] * 100, 2)
+        else:
+            conversion = 0
+        message += f"\n|\n|    {conversion}%\nv\n{states_list[n + 2]}"
+
+    total_conversion = round(number_users[-1] / number_users[0] * 100, 2)
+    message += f"\n\nОбщая конверсия из зашедших в оплату — {total_conversion}%"
+
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=message,
+    )
+
+
+async def setstatus(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id not in ADMINS:
+        return
+
+    if len(context.args) != 2:
+        await update.message.reply_text(
+            "Использование: /setstatus <tg_id> <new_status>"
+        )
+        return
+
+    await update_status(
+        context.args[0],
+        int(context.args[1]),  # новый статус
+    )
+
+    await update.message.reply_text(
+        f"Статус пользователя {context.args[0]} обновлён на {context.args[1]}."
+    )
+
+
+async def send_excel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id not in ADMINS:
+        return
+
+    try:
+        await export_to_excel()
+        with open(EXCEL_PATH, "rb") as file:
+            await context.bot.send_document(
+                chat_id=update.effective_chat.id,
+                document=file,
+                filename=EXCEL_PATH,
+                caption="📄 Конверсии",
+            )
+        os.remove(EXCEL_PATH)
+    except Exception as e:
+        await update.message.reply_text(f"Произошла ошибка: {e}")
+
+
 def main():
     print("MAIN")
 
@@ -228,6 +350,7 @@ def main():
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("info", intensiv_info))
+    application.add_handler(CommandHandler("admin", admin_commands))
 
     application.add_handler(
         CallbackQueryHandler(about_course_callback, pattern="about_course")
@@ -237,6 +360,12 @@ def main():
             course_callback, pattern="^(basic_course|advanced_course)$"
         )
     )
+    application.add_handler(
+        CallbackQueryHandler(get_conversions_callback, pattern="get_conversions")
+    )
+    application.add_handler(CommandHandler("setstatus", setstatus))
+
+    application.add_handler(CommandHandler("excel", send_excel))
 
     application.run_polling()
 
