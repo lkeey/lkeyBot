@@ -56,6 +56,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [[InlineKeyboardButton("🌐 Об интенсиве", callback_data="about_course")]]
     )
 
+    channel = "нет информации"
+    if len(context.args) > 0:
+        channel = context.args[0]
+
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute(
             "SELECT username FROM users WHERE id_tg = ?", (user_id,)
@@ -65,6 +69,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await register_user(
                     user_id=user_id,
                     username=update.effective_user.username,
+                    channel=channel,
                 )
 
     with open("img/7M307113.JPG", "rb") as f:

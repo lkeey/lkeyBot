@@ -12,20 +12,21 @@ async def create_db():
                 id INTEGER PRIMARY KEY,    
                 id_tg INTEGER DEFAULT 0,
                 username TEXT,
+                channel TEXT DEFAUL "нет",
                 status INTEGER DEFAULT 1
             )
         """)
         await db.commit()
 
 
-async def register_user(user_id, username):
+async def register_user(user_id, username, channel):
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
             """
-            INSERT INTO users (id_tg, username) 
-            VALUES (?, ?)
+            INSERT INTO users (id_tg, username, channel) 
+            VALUES (?, ?, ?)
             """,
-            (user_id, username),
+            (user_id, username, channel),
         )
         await db.commit()
 
