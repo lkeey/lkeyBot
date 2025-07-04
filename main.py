@@ -38,14 +38,10 @@ EXCEL_PATH = "users_export.xlsx"
 
 load_dotenv()
 
-# TODO добавить админ панель и конверсию лидов
-
 
 async def is_subscribed(user_id, context) -> bool:
     try:
         member = await context.bot.get_chat_member(CHANNEL_USERNAME, user_id)
-
-        print(f"User status: {member.status}")
 
         return member.status in ["member", "administrator", "creator"]
     except Exception as e:
@@ -87,9 +83,7 @@ async def about_course_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     await query.answer()
 
-    subc = await is_subscribed(user_id, context)
-
-    if subc:
+    if await is_subscribed(user_id, context):
         await update_status(
             update.effective_user.id,
             2,  # подписался
@@ -117,7 +111,11 @@ async def about_course_callback(update: Update, context: ContextTypes.DEFAULT_TY
     else:
         keyboard = InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton("Канал", url="https://t.me/+zO1-XmalT2xhNzMy")],
+                [
+                    InlineKeyboardButton(
+                        "Подписаться", url="https://t.me/+zO1-XmalT2xhNzMy"
+                    )
+                ],
             ]
         )
 
@@ -126,6 +124,13 @@ async def about_course_callback(update: Update, context: ContextTypes.DEFAULT_TY
             text=PLEASE_SUBSCRIBE,
             reply_markup=keyboard,
             parse_mode="Markdown",
+        )
+
+        context.job_queue.run_once(
+            send_is_subscribed,
+            10,
+            chat_id=update.effective_chat.id,
+            name="CHECK_IF_SUBSCRIBED",
         )
 
 
@@ -338,6 +343,71 @@ async def send_excel(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"Произошла ошибка: {e}")
 
 
+async def send_is_subscribed(context: ContextTypes.DEFAULT_TYPE) -> None:
+    job = context.job
+    keyboard = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton("Подписаться", url="https://t.me/+zO1-XmalT2xhNzMy")],
+            [InlineKeyboardButton("Конечно", callback_data="yes_subscribed")],
+        ],
+    )
+
+    await context.bot.send_message(
+        job.chat_id, text="🤩 Уже подписался?", reply_markup=keyboard
+    )
+
+
+async def send_retry_if_subscribed(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    await query.message.delete()
+
+    user_id = update.effective_user.id
+
+    if await is_subscribed(user_id, context):
+        await update_status(
+            update.effective_user.id,
+            2,  # подписался
+        )
+
+        keyboard = InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🔹 Базовый курс", callback_data="basic_course")],
+                [
+                    InlineKeyboardButton(
+                        "🔸 Продвинутый курс", callback_data="advanced_course"
+                    )
+                ],
+            ]
+        )
+
+        with open("img/course_1.jpg", "rb") as photo:
+            await context.bot.send_photo(
+                chat_id=update.effective_chat.id,
+                photo=photo,
+                caption=ABOUT_INTENSIV,
+                parse_mode="Markdown",
+                reply_markup=keyboard,
+            )
+    else:
+        keyboard = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "Подписаться", url="https://t.me/+zO1-XmalT2xhNzMy"
+                    )
+                ],
+                [InlineKeyboardButton("Конечно", callback_data="yes_subscribed")],
+            ],
+        )
+
+        await context.bot.send_message(
+            update.effective_chat.id,
+            text="💥 Скорее подписывайся!",
+            reply_markup=keyboard,
+        )
+
+
 def main():
     print("MAIN")
 
@@ -366,6 +436,10 @@ def main():
     application.add_handler(CommandHandler("setstatus", setstatus))
 
     application.add_handler(CommandHandler("excel", send_excel))
+
+    application.add_handler(
+        CallbackQueryHandler(send_retry_if_subscribed, pattern="yes_subscribed")
+    )
 
     application.run_polling()
 
