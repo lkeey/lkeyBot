@@ -18,6 +18,7 @@ from db.database import (
     calculate_conversion,
     update_status,
     export_to_excel,
+    DB_PATH,
 )
 
 from static.text import (
@@ -34,7 +35,7 @@ from static.ids import CHANNEL_USERNAME, ADMINS
 
 import asyncio
 
-DB_PATH = "users.db"
+
 EXCEL_PATH = "users_export.xlsx"
 
 load_dotenv()
