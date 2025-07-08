@@ -1,7 +1,7 @@
 import aiosqlite
 import pandas as pd
 
-DB_PATH = "users.db"
+DB_PATH = "db/users.db"
 EXCEL_PATH = "users_export.xlsx"
 
 
