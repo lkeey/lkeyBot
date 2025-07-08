@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 import os
 import aiosqlite
+from datetime import datetime
 
 from telegram.ext import (
     Application,
@@ -66,10 +67,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ) as cursor:
             row = await cursor.fetchone()
             if not row:
+                current_date = datetime.now().strftime("%d.%m.%Y %H:%M")
                 await register_user(
                     user_id=user_id,
                     username=update.effective_user.username,
                     channel=channel,
+                    date=current_date,
                 )
 
     with open("img/7M307113.JPG", "rb") as f:
